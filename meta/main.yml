@@ -1,0 +1,13 @@
+galaxy_info:
+  role_name: ispconfig
+  author: estribiyo
+  description: ISPConfig3 installation and customization.
+  license: license (GPL-3.0-only)
+  min_ansible_version: 2.1
+  platforms:
+    - name: Debian
+      versions:
+        - all
+  galaxy_tags:
+    - isp
+    - internet

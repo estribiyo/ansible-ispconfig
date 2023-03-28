@@ -1,0 +1,148 @@
+- name: Installing some ISP essential libraries
+  apt:
+    name: "{{ packages }}"
+    state: present
+  vars:
+    packages:
+      - libapache2-mod-php
+      - php-cli
+      - php-soap
+      - php7.3-mbstring
+      - php7.3-yaml
+
+- name: Check if ISPConfig3 is already installed
+  stat:
+    path: /usr/local/ispconfig/server/lib/config.inc.php
+  register: isinstalled
+
+- name: Check if ISPConfig3 install script is cloned
+  stat:
+    path: /usr/src/ispconfig-autoinstaller/ispc3-ai.sh
+  register: iscloned
+
+- name: Check installation/clonation of ISPConfig3
+  set_fact:
+    ispinstalled: "{{ isinstalled.stat.exists }}"
+    ispcloned: "{{ iscloned.stat.exists }}"
+
+- name: Clone ISPConfig3 repository
+  git:
+    repo: 'https://git.ispconfig.org/ispconfig/ispconfig-autoinstaller.git'
+    dest: /usr/src/ispconfig-autoinstaller
+    version: master
+  when: not ispinstalled and not ispcloned
+
+- name: Replace TTY condition (hack)
+  replace:
+    path: /usr/src/ispconfig-autoinstaller/ispc3-ai.sh
+    regexp: '("\$TTY" != "")'
+    replace: '\1 ] && [ "$TTY" != "?"'
+  when: not ispinstalled and not ispcloned
+
+- name: Disable conflicting Apache2 modules
+  shell: a2dismod php7.3 mpm_prefork
+  when: not ispinstalled and not ispcloned
+
+- name: Install ISPConfig3
+  shell: '/usr/src/ispconfig-autoinstaller/ispc3-ai.sh --no-mail --use-ftp-ports=40110-40210 --no-firewall --no-roundcube --no-mailman --unattended-upgrades --i-know-what-i-am-doing'
+  when: not ispinstalled
+  register: ispinstalling
+  failed_when: ispinstalling.rc != 0
+
+- name: Installing ImageMagic for all PHP versions
+  apt:
+    name: "{{ packages }}"
+    state: present
+  vars:
+    packages:
+      - php5.6-imagick
+      - php7.1-imagick
+      - php7.2-imagick
+      - php7.3-imagick
+      - php7.4-imagick
+      - php8.0-imagick
+      - php8.1-imagick
+  notify: enable pdf edition
+
+- name: Getting passwords from ISPConfig3 log
+  when: not ispinstalled
+  set_fact:
+    mysqlpass: "{{ ispinstalling.stdout | regex_search('Your MySQL root password is: (.+)', '\\1') | first }}"
+    adminpass: "{{ ispinstalling.stdout | regex_search('Your ISPConfig admin password is: (.+)', '\\1') | first }}"
+
+- name: Save MySQL credentials (/root/.my.cnf)
+  when: not ispinstalled
+  copy:
+    content: "[mysql]\nuser=root\npassword={{ mysqlpass }}\n"
+    dest: "/root/.my.cnf"
+    mode: '0600'
+
+- name: Save credentials to file (/etc/motd)
+  when: not ispinstalled
+  template:
+    src: files/etc/motd.j2
+    dest: /etc/motd
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Copy initial SQL to temp file (/tmp/dbinit.sql)
+  when: not ispinstalled
+  template:
+    src=files/tmp/dbinit.sql.j2
+    dest=/tmp/dbinit.sql
+    owner=root
+    group=root
+
+- name: Copy initial/default ISPConfig3 configuration
+  when: not ispinstalled
+  template:
+    src=files/tmp/ispconfig.ini.j2
+    dest=/tmp/ispconfig.ini
+    owner=root
+    group=root
+
+- name: Import SQL (/tmp/dbinit.sql) to DB
+  when: not ispinstalled
+  shell: '/usr/bin/mysql < /tmp/dbinit.sql'
+
+- name: Ensure the timeout on Apache start
+  lineinfile:
+    path: /lib/systemd/system/apache2.service
+    insertafter: "^Restart=on-abort$"
+    regexp: "^TimeoutStartSec=300"
+    state: present
+    line: "TimeoutStartSec=300\n"
+  register: srvcmod
+
+- name: Just force systemd to reread configs (2.4 and above)
+  systemd:
+    daemon_reload: yes
+  when: srvcmod.changed
+
+- name: Provisioning sites
+  shell: '/usr/bin/php /vagrant/shell/hosting.php'
+  args:
+    chdir: '/vagrant/shell'
+  register: retprov
+  failed_when: retprov.rc != 0
+
+- name: Provisioning sites (result)
+  changed_when: False
+  debug:
+    msg: "{{ retprov.stdout_lines | join(\"\n\") }}"
+
+#- name: Check for credentials (/root/passwords)
+#  stat:
+#    path: /root/passwords
+#  register: havepass
+
+#- name: Reading credentials from file (/root/passwords)
+#  when: havepass.stat.exists
+#  shell: cat /root/passwords
+#  changed_when: False
+#  register: credout
+
+#- name: "Display credentials:"
+#  debug:
+#    msg: "{{ credout.stdout_lines | join(\"\n\") }}"

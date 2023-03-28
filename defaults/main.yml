@@ -1,0 +1,5 @@
+default_php_open_basedir: '[website_path]/web:[website_path]/private:[website_path]/tmp:/var/www/[website_domain]/web:/srv/www/[website_domain]/web:/usr/share/php5:/usr/share/php:/tmp:/usr/share/phpmyadmin:/etc/phpmyadmin:/var/lib/phpmyadmin:/dev/random:/dev/urandom'
+default_php_version: 7.3
+ispconfig_api:
+  user: hostprovider
+  password: Passw0rd
