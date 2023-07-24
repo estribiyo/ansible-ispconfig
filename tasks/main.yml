@@ -44,7 +44,7 @@
   when: not ispinstalled and not ispcloned
 
 - name: Install ISPConfig3
-  shell: '/usr/src/ispconfig-autoinstaller/ispc3-ai.sh --use-ftp-ports=40110-40210 --unattended-upgrades --i-know-what-i-am-doing'
+  shell: '/usr/src/ispconfig-autoinstaller/ispc3-ai.sh --use-ftp-ports=40110-40210 --no-firewall --no-roundcube --no-mailman --unattended-upgrades --i-know-what-i-am-doing'
   when: not ispinstalled
   register: ispinstalling
   failed_when: ispinstalling.rc != 0
