@@ -40,7 +40,7 @@
   when: not ispinstalled and not ispcloned
 
 - name: Disable conflicting Apache2 modules
-  shell: a2dismod php7.3 mpm_prefork
+  shell: a2dismod php7.4 mpm_prefork
   when: not ispinstalled and not ispcloned
 
 - name: Install ISPConfig3
