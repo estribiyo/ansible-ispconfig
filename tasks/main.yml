@@ -130,7 +130,8 @@
 - name: Provisioning sites (result)
   changed_when: False
   debug:
-    msg: "{{ retprov.stdout_lines | join(\"\n\") }}"
+    msg: |-
+      {{ retprov.stdout }}
 
 #- name: Check for credentials (/root/passwords)
 #  stat:
