@@ -141,9 +141,9 @@
 - name: Increase client message rate limit
   replace:
     path: /etc/postfix/main.cf
-    regexp: '^smtpd_client_message_rate_limit = .+$'
+    regexp: '^smtpd_client_message_rate_limit = 100$'
     replace: 'smtpd_client_message_rate_limit = 999999'
-    
+
 #- name: Check for credentials (/root/passwords)
 #  stat:
 #    path: /root/passwords
